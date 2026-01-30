@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognee</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/vis-network@9.1.6/dist/vis-network.min.js"></script>
+    <style>
+        :root {
+            --fg: #000;
+            --bg: #fff;
+            --bg-secondary: #fafafa;
+            --border: #eaeaea;
+            --border-hover: #999;
+            --text-secondary: #666;
+            --text-muted: #888;
+            --accent: #0070f3;
+            --error: #e00;
+            --success: #50e3c2;
+            --violet: #7928ca;
+            --pink: #ff0080;
+            --orange: #f5a623;
+            --radius: 8px;
+            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --fg: #fff;
+                --bg: #0a0a0a;
+                --bg-secondary: #111;
+                --border: #222;
+                --border-hover: #444;
+                --text-secondary: #999;
+                --text-muted: #666;
+            }
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--fg);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            grid-template-rows: 48px 1fr;
+            height: 100vh;
+        }
+
+        /* Header */
+        header {
+            grid-column: 1 / -1;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .logo-icon {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--violet), var(--pink));
+            border-radius: 5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.success { background: var(--success); }
+        .status-dot.error { background: var(--error); }
+        .status-dot.loading { background: var(--orange); animation: pulse 1s infinite; }
+
+        @keyframes pulse { 50% { opacity: 0.4; } }
+
+        /* Sidebar */
+        .sidebar {
+            grid-row: 2;
+            grid-column: 1;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section:last-child { border-bottom: none; }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 12px;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-secondary);
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--accent);
+            background: rgba(0, 112, 243, 0.05);
+        }
+
+        .drop-zone-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .drop-zone-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .file-input { display: none; }
+
+        /* File list */
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .file-item-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+        }
+
+        .file-item-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px;
+        }
+
+        .file-item-remove:hover { color: var(--error); }
+
+        /* Inputs */
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            font-family: var(--font);
+            font-size: 13px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--fg);
+            resize: none;
+        }
+
+        textarea { min-height: 80px; }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--fg);
+        }
+
+        textarea::placeholder, input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        button {
+            font-family: var(--font);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--fg);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover { border-color: var(--fg); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary {
+            background: var(--fg);
+            color: var(--bg);
+            border-color: var(--fg);
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        .btn-danger { color: var(--error); }
+        .btn-danger:hover { background: var(--error); color: #fff; border-color: var(--error); }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Results */
+        .results {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 12px;
+        }
+
+        .result-item {
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            border-left: 2px solid var(--accent);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* Document list */
+        .doc-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .doc-item {
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .doc-item-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .doc-item-preview {
+            color: var(--text-secondary);
+            font-size: 11px;
+            line-height: 1.4;
+            margin-top: 6px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .doc-item-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 2px 6px;
+            font-size: 14px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .doc-item-delete:hover {
+            background: var(--error);
+            color: #fff;
+        }
+
+        /* Graph container */
+        .graph-container {
+            grid-row: 2;
+            grid-column: 2;
+            position: relative;
+            background: var(--bg);
+            overflow: hidden;
+        }
+
+        #graph {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            inset: 0;
+        }
+
+        .graph-overlay {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .graph-stats {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg);
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .legend {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-item:last-child { margin-bottom: 0; }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .graph-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 13px;
+            z-index: 10;
+            background: var(--bg);
+        }
+
+        .graph-empty svg {
+            width: 48px;
+            height: 48px;
+            opacity: 0.3;
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="logo">
+                <div class="logo-icon"></div>
+                Cognee
+            </div>
+            <div class="header-actions">
+                <div class="status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Connecting...</span>
+                </div>
+                <button class="btn-sm btn-danger" onclick="resetKnowledge()">Reset</button>
+            </div>
+        </header>
+
+        <aside class="sidebar">
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Add Data</span>
+                </div>
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-text">Drop files or click to browse</div>
+                    <div class="drop-zone-hint">.txt, .md, .json, .csv, .pdf</div>
+                    <input type="file" class="file-input" id="fileInput" multiple accept=".txt,.md,.json,.csv,.pdf,.html">
+                </div>
+                <div id="fileList"></div>
+                <div class="divider">or</div>
+                <textarea id="textInput" placeholder="Paste text..."></textarea>
+                <div class="btn-row">
+                    <button class="btn-primary" id="addBtn" onclick="addContent()">Add</button>
+                    <button id="cognifyBtn" onclick="cognify()">Build Graph</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <span class="section-title">Search</span>
+                </div>
+                <input type="text" id="searchInput" placeholder="Ask a question..." onkeypress="if(event.key==='Enter')search()">
+                <div class="btn-row">
+                    <button class="btn-primary" id="searchBtn" onclick="search()">Search</button>
+                </div>
+                <div class="results" id="results">
+                    <div class="empty-state">Results will appear here</div>
+                </div>
+            </div>
+
+            <div class="section" style="flex:1; display:flex; flex-direction:column; min-height:200px;">
+                <div class="section-header">
+                    <span class="section-title">Documents</span>
+                    <button class="btn-sm" onclick="loadDocuments()">↻</button>
+                </div>
+                <div class="doc-list" id="docList">
+                    <div class="empty-state">No documents yet</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="graph-container">
+            <div id="graph"></div>
+            <div class="graph-empty" id="graphEmpty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                    <circle cx="12" cy="12" r="3"/>
+                    <circle cx="4" cy="6" r="2"/>
+                    <circle cx="20" cy="6" r="2"/>
+                    <circle cx="4" cy="18" r="2"/>
+                    <circle cx="20" cy="18" r="2"/>
+                    <path d="M6 6.5L9.5 10.5M14.5 10.5L18 6.5M6 17.5L9.5 13.5M14.5 13.5L18 17.5"/>
+                </svg>
+                <span>Add data and build graph</span>
+            </div>
+            <div class="legend" id="legend" style="display:none;">
+                <div class="legend-item"><div class="legend-dot" style="background:#7928ca"></div>Entity</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#0070f3"></div>EntityType</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#50e3c2"></div>DocumentChunk</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f5a623"></div>TextSummary</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ff0080"></div>TextDocument</div>
+            </div>
+            <div class="graph-overlay">
+                <button class="btn-sm" onclick="loadGraph()">Refresh</button>
+                <button class="btn-sm" onclick="network && network.fit()">Fit</button>
+            </div>
+            <div class="graph-stats" id="graphStats"></div>
+        </main>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        let pendingFiles = [];
+        let network = null;
+
+        const colors = {
+            Entity: "#7928ca",
+            EntityType: "#0070f3",
+            DocumentChunk: "#50e3c2",
+            TextSummary: "#f5a623",
+            TextDocument: "#ff0080",
+            Unknown: "#666"
+        };
+
+        // Status
+        function setStatus(msg, type = 'default') {
+            document.getElementById('statusDot').className = 'status-dot ' + type;
+            document.getElementById('statusText').textContent = msg;
+        }
+
+        function setBtnLoading(id, loading) {
+            const btn = document.getElementById(id);
+            if (loading) {
+                btn.dataset.text = btn.textContent;
+                btn.innerHTML = '<div class="spinner"></div>';
+                btn.disabled = true;
+            } else {
+                btn.textContent = btn.dataset.text;
+                btn.disabled = false;
+            }
+        }
+
+        // File handling
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+
+        function handleFiles(files) {
+            for (const file of files) {
+                if (!pendingFiles.some(f => f.name === file.name)) pendingFiles.push(file);
+            }
+            renderFileList();
+        }
+
+        function removeFile(i) {
+            pendingFiles.splice(i, 1);
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const el = document.getElementById('fileList');
+            el.innerHTML = pendingFiles.map((f, i) => `
+                <div class="file-item">
+                    <span class="file-item-name">${escapeHtml(f.name)}</span>
+                    <button class="file-item-remove" onclick="removeFile(${i})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(t) {
+            const d = document.createElement('div');
+            d.textContent = t;
+            return d.innerHTML;
+        }
+
+        async function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        // API calls
+        async function addContent() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!pendingFiles.length && !text) return setStatus('Add content first', 'error');
+
+            setBtnLoading('addBtn', true);
+            setStatus('Adding...', 'loading');
+
+            try {
+                for (const file of pendingFiles) {
+                    const content = await readFile(file);
+                    await fetch(`${API}/api/add`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: content })
+                    });
+                }
+                if (text) {
+                    await fetch(`${API}/api/add`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text })
+                    });
+                }
+                pendingFiles = [];
+                renderFileList();
+                document.getElementById('textInput').value = '';
+                setStatus('Added. Build graph next.', 'success');
+            } catch (e) {
+                setStatus('Error: ' + e.message, 'error');
+            } finally {
+                setBtnLoading('addBtn', false);
+            }
+        }
+
+        async function cognify() {
+            setBtnLoading('cognifyBtn', true);
+            setStatus('Building graph...', 'loading');
+
+            try {
+                const r = await fetch(`${API}/api/cognify`, { method: 'POST' });
+                if (!r.ok) throw new Error('Failed');
+                setStatus('Graph built', 'success');
+                loadGraph();
+                loadDocuments();
+            } catch (e) {
+                setStatus('Build failed', 'error');
+            } finally {
+                setBtnLoading('cognifyBtn', false);
+            }
+        }
+
+        async function search() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            setBtnLoading('searchBtn', true);
+            setStatus('Searching...', 'loading');
+
+            try {
+                const r = await fetch(`${API}/api/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await r.json();
+                showResults(data.results);
+                setStatus('Done', 'success');
+            } catch (e) {
+                setStatus('Search failed', 'error');
+            } finally {
+                setBtnLoading('searchBtn', false);
+            }
+        }
+
+        function showResults(results) {
+            const el = document.getElementById('results');
+            if (!results?.length) {
+                el.innerHTML = '<div class="empty-state">No results</div>';
+                return;
+            }
+            el.innerHTML = results.map(r => `<div class="result-item">${escapeHtml(r)}</div>`).join('');
+        }
+
+        async function resetKnowledge() {
+            if (!confirm('Reset all data?')) return;
+            setStatus('Resetting...', 'loading');
+            try {
+                await fetch(`${API}/api/reset`, { method: 'POST' });
+                setStatus('Reset complete', 'success');
+                document.getElementById('results').innerHTML = '<div class="empty-state">Results will appear here</div>';
+                pendingFiles = [];
+                renderFileList();
+                loadGraph();
+                loadDocuments();
+            } catch (e) {
+                setStatus('Reset failed', 'error');
+            }
+        }
+
+        // Document management
+        async function loadDocuments() {
+            try {
+                const r = await fetch(`${API}/api/documents`);
+                const data = await r.json();
+                const el = document.getElementById('docList');
+
+                if (!data.documents?.length) {
+                    el.innerHTML = '<div class="empty-state">No documents yet</div>';
+                    return;
+                }
+
+                el.innerHTML = data.documents.map(doc => `
+                    <div class="doc-item">
+                        <div class="doc-item-header">
+                            <span style="font-weight:500; word-break:break-all;">${escapeHtml(doc.preview.substring(0, 50))}${doc.preview.length > 50 ? '...' : ''}</span>
+                            <button class="doc-item-delete" onclick="deleteDocument('${doc.id}')" title="Delete">×</button>
+                        </div>
+                        <div class="doc-item-preview">${escapeHtml(doc.preview)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load documents:', e);
+            }
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Delete this document?')) return;
+            setStatus('Deleting...', 'loading');
+            try {
+                const r = await fetch(`${API}/api/documents/${docId}`, { method: 'DELETE' });
+                if (!r.ok) throw new Error('Delete failed');
+                setStatus('Document deleted', 'success');
+                loadDocuments();
+                loadGraph();
+            } catch (e) {
+                setStatus('Delete failed', 'error');
+            }
+        }
+
+        // Graph visualization
+        async function loadGraph() {
+            const graphEmpty = document.getElementById('graphEmpty');
+            const legend = document.getElementById('legend');
+            const stats = document.getElementById('graphStats');
+            const container = document.getElementById('graph');
+
+            try {
+                const r = await fetch(`${API}/api/graph-data`);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const data = await r.json();
+
+                console.log('Graph data:', data.nodes.length, 'nodes,', data.edges.length, 'edges');
+
+                if (!data.nodes.length) {
+                    graphEmpty.style.display = 'flex';
+                    legend.style.display = 'none';
+                    stats.textContent = '';
+                    if (network) { network.destroy(); network = null; }
+                    return;
+                }
+
+                graphEmpty.style.display = 'none';
+                legend.style.display = 'block';
+
+                const nodes = new vis.DataSet(data.nodes.map(n => ({
+                    id: n.id,
+                    label: n.label || n.type,
+                    title: n.title,
+                    color: {
+                        background: colors[n.type] || colors.Unknown,
+                        border: colors[n.type] || colors.Unknown,
+                        highlight: { background: '#fff', border: colors[n.type] || colors.Unknown }
+                    },
+                    font: { color: '#fff', size: 11 },
+                    size: n.type === 'TextDocument' ? 30 : n.type === 'Entity' ? 25 : 18
+                })));
+
+                const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const edges = new vis.DataSet(data.edges.map((e, i) => ({
+                    id: i,
+                    from: e.from,
+                    to: e.to,
+                    label: e.label,
+                    arrows: 'to',
+                    color: { color: isDark ? '#555' : '#999', highlight: isDark ? '#888' : '#666' },
+                    font: { color: isDark ? '#888' : '#666', size: 9 }
+                })));
+
+                const options = {
+                    nodes: { shape: 'dot' },
+                    edges: { smooth: { type: 'continuous' }, arrows: { to: { scaleFactor: 0.5 } } },
+                    physics: {
+                        barnesHut: { gravitationalConstant: -2000, springLength: 120, springConstant: 0.04 }
+                    },
+                    interaction: { hover: true, tooltipDelay: 100 }
+                };
+
+                if (network) network.destroy();
+                network = new vis.Network(container, { nodes, edges }, options);
+
+                network.once('stabilized', () => {
+                    console.log('Graph stabilized');
+                    network.fit();
+                });
+
+                stats.textContent = `${data.nodes.length} nodes · ${data.edges.length} edges`;
+                console.log('Graph rendered, container size:', container.offsetWidth, 'x', container.offsetHeight);
+
+            } catch (e) {
+                console.error('Graph load error:', e);
+                stats.textContent = 'Error loading graph';
+            }
+        }
+
+        // Init
+        fetch(`${API}/api/health`)
+            .then(r => r.ok ? setStatus('Ready', 'success') : setStatus('Server error', 'error'))
+            .catch(() => setStatus('Server offline', 'error'));
+
+        loadGraph();
+        loadDocuments();
+    </script>
+</body>
+</html>
