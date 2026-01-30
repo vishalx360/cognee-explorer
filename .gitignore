@@ -61,3 +61,4 @@ htmlcov/
 
 # Cognee data (if stored locally)
 .cognee_system/
+.DS_Store

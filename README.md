@@ -2,6 +2,8 @@
 
 A web interface for [Cognee](https://github.com/topoteretes/cognee) - an AI memory framework that builds knowledge graphs from unstructured data.
 
+![Cognee Explorer](./poster.jpg)
+
 ## Features
 
 - **Add Data**: Drop files or paste text to add to the knowledge base
@@ -10,96 +12,94 @@ A web interface for [Cognee](https://github.com/topoteretes/cognee) - an AI memo
 - **Visualize**: Interactive graph visualization with Neo4j
 - **Manage**: View and delete individual documents
 
-## Prerequisites
-
-- Python 3.10+
-- Neo4j (local or Docker)
-- OpenAI-compatible LLM API (or local LLM)
-
 ## Quick Start
 
-### 1. Clone and Install
+### 1. Clone
 
 ```bash
-git clone https://github.com/yourusername/cognee-explorer.git
+git clone https://github.com/vishalx360/cognee-explorer.git
 cd cognee-explorer
-pip install -r requirements.txt
 ```
 
-### 2. Start Neo4j
-
-Using Docker:
-```bash
-docker run -d \
-  --name cognee-neo4j \
-  -p 7474:7474 -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password123 \
-  neo4j:5-community
-```
-
-### 3. Configure Environment
+### 2. Configure
 
 ```bash
 cp .env.example .env
-# Edit .env with your API keys and Neo4j credentials
+# Edit .env and add your LLM_API_KEY
 ```
 
-### 4. Run
+### 3. Run
 
 ```bash
-python server.py
+docker compose up
 ```
 
-Open http://localhost:8000
+Open **http://localhost:8000**
 
 ## Configuration
 
-See `.env.example` for all configuration options:
+Edit `.env` to configure your LLM:
 
-| Variable | Description |
-|----------|-------------|
-| `LLM_PROVIDER` | LLM provider (openai, anthropic, etc.) |
-| `LLM_MODEL` | Model name |
-| `LLM_ENDPOINT` | API endpoint URL |
-| `LLM_API_KEY` | API key |
-| `EMBEDDING_PROVIDER` | Embedding provider (fastembed for local) |
-| `GRAPH_DATABASE_PROVIDER` | Graph DB (neo4j) |
-| `GRAPH_DATABASE_URL` | Neo4j bolt URL |
-| `GRAPH_DATABASE_USERNAME` | Neo4j username |
-| `GRAPH_DATABASE_PASSWORD` | Neo4j password |
+```env
+LLM_API_KEY=your-api-key
+LLM_MODEL=gpt-4o-mini
+
+# Optional: Use custom API endpoint (OpenAI-compatible)
+LLM_API_URL=https://your-llm-proxy.com/v1
+```
+
+See `.env.example` for all options.
 
 ## Usage
 
-1. **Add Data**: Drag & drop files (.txt, .md, .json, .csv, .pdf) or paste text
-2. **Build Graph**: Click "Build Graph" to process data into a knowledge graph
-3. **Search**: Ask questions about your data
-4. **View Graph**: See the knowledge graph visualization on the right panel
-5. **Manage**: Delete documents from the Documents section
+1. **Add Data** - Drag & drop files (.txt, .md, .json, .csv, .pdf) or paste text
+2. **Build Graph** - Click "Build Graph" to process into knowledge graph
+3. **Search** - Ask questions about your data
+4. **View Graph** - Interactive visualization on the right panel
+5. **Manage** - Delete documents from the Documents section
 
-## Project Structure
+## Manual Setup (without Docker)
 
+<details>
+<summary>Click to expand</summary>
+
+### Prerequisites
+- Python 3.10+
+- Neo4j
+
+### Install
+
+```bash
+pip install -r requirements.txt
 ```
-cognee-explorer/
-├── server.py           # FastAPI backend
-├── index.html          # Web interface
-├── requirements.txt    # Python dependencies
-├── .env.example        # Example configuration
-└── cognee_example.py   # Standalone CLI example
+
+### Start Neo4j
+
+```bash
+docker run -d --name neo4j -p 7474:7474 -p 7687:7687 \
+  -e NEO4J_AUTH=neo4j/password123 neo4j:5-community
 ```
 
-## API Endpoints
+### Run
+
+```bash
+cp .env.example .env
+# Edit .env with your settings
+python server.py
+```
+
+</details>
+
+## API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/` | Web interface |
 | POST | `/api/add` | Add text to knowledge base |
 | POST | `/api/cognify` | Build knowledge graph |
-| POST | `/api/search` | Search the knowledge base |
+| POST | `/api/search` | Search knowledge base |
+| GET | `/api/documents` | List documents |
+| DELETE | `/api/documents/{id}` | Delete document |
 | POST | `/api/reset` | Reset all data |
-| GET | `/api/documents` | List all documents |
-| DELETE | `/api/documents/{id}` | Delete a document |
-| GET | `/api/graph-data` | Get graph for visualization |
-| GET | `/api/health` | Health check |
 
 ## License
 
@@ -107,4 +107,4 @@ MIT
 
 ## Credits
 
-Built with [Cognee](https://github.com/topoteretes/cognee) - Memory for AI Agents
+Built with [Cognee](https://github.com/topoteretes/cognee)
